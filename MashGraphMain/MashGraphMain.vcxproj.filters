@@ -40,6 +40,24 @@
     <Image Include="window.png">
       <Filter>Файлы ресурсов</Filter>
     </Image>
+    <Image Include="Neon1_back.jpg">
+      <Filter>Файлы ресурсов</Filter>
+    </Image>
+    <Image Include="Neon1_front.jpg">
+      <Filter>Файлы ресурсов</Filter>
+    </Image>
+    <Image Include="Neon1_left.jpg">
+      <Filter>Файлы ресурсов</Filter>
+    </Image>
+    <Image Include="Neon1_right.jpg">
+      <Filter>Файлы ресурсов</Filter>
+    </Image>
+    <Image Include="Neon1_top.jpg">
+      <Filter>Файлы ресурсов</Filter>
+    </Image>
+    <Image Include="Neon13_bottom.jpg">
+      <Filter>Файлы ресурсов</Filter>
+    </Image>
   </ItemGroup>
   <ItemGroup>
     <None Include="colorShader.frag">

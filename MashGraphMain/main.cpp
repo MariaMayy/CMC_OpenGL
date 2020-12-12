@@ -40,6 +40,7 @@ GLfloat lastMouse_Y = HEIGHT / 2.0; // last coordinates of mouse - Y
 bool bFirstMouse = true; // first press mouse
 
 GLuint LoadTexture(string name); // load texture
+GLuint LoadCubeMap(vector<string> faces); // load cube map
 
 GLfloat deltaTime = 0.0f;	// time between the last frame and the current frame 
 GLfloat lastFrame = 0.0f; // time of last output frame
@@ -143,7 +144,7 @@ int main()
     };
     
     // bilboard
-    float bilboardVertices[] = {
+    GLfloat bilboardVertices[] = {
         // positions         // texture Coords (swapped y coordinates because texture is flipped upside down)
         0.0f,  0.5f,  0.0f,  0.0f,  0.0f,
         0.0f, -0.5f,  0.0f,  0.0f,  1.0f,
@@ -154,11 +155,57 @@ int main()
         1.0f,  0.5f,  0.0f,  1.0f,  0.0f
     };
  
+    // skybox
+    GLfloat skyboxVertices[] = {
+    -1.0f,  1.0f, -1.0f,
+        -1.0f, -1.0f, -1.0f,
+         1.0f, -1.0f, -1.0f,
+         1.0f, -1.0f, -1.0f,
+         1.0f,  1.0f, -1.0f,
+        -1.0f,  1.0f, -1.0f,
+
+        -1.0f, -1.0f,  1.0f,
+        -1.0f, -1.0f, -1.0f,
+        -1.0f,  1.0f, -1.0f,
+        -1.0f,  1.0f, -1.0f,
+        -1.0f,  1.0f,  1.0f,
+        -1.0f, -1.0f,  1.0f,
+
+         1.0f, -1.0f, -1.0f,
+         1.0f, -1.0f,  1.0f,
+         1.0f,  1.0f,  1.0f,
+         1.0f,  1.0f,  1.0f,
+         1.0f,  1.0f, -1.0f,
+         1.0f, -1.0f, -1.0f,
+
+        -1.0f, -1.0f,  1.0f,
+        -1.0f,  1.0f,  1.0f,
+         1.0f,  1.0f,  1.0f,
+         1.0f,  1.0f,  1.0f,
+         1.0f, -1.0f,  1.0f,
+        -1.0f, -1.0f,  1.0f,
+
+        -1.0f,  1.0f, -1.0f,
+         1.0f,  1.0f, -1.0f,
+         1.0f,  1.0f,  1.0f,
+         1.0f,  1.0f,  1.0f,
+        -1.0f,  1.0f,  1.0f,
+        -1.0f,  1.0f, -1.0f,
+
+        -1.0f, -1.0f, -1.0f,
+        -1.0f, -1.0f,  1.0f,
+         1.0f, -1.0f, -1.0f,
+         1.0f, -1.0f, -1.0f,
+        -1.0f, -1.0f,  1.0f,
+         1.0f, -1.0f,  1.0f
+    };
+
     // Compile shader program
     Shader cubeShader("cubeShader.vert","cubeShader.frag");
     Shader colorShader("colorShader.vert", "colorShader.frag");
     Shader lampShader("lampShader.vert","lampShader.frag");
     Shader bilboardShader("colorShader.vert","bilboardShader.frag");
+    Shader skyboxShader("skyboxShader.vert", "skyboxShader.frag");
 
     // Maps for cubes
     GLuint diffuseMap = LoadTexture("art6.jpg");
@@ -177,6 +224,7 @@ int main()
     unsigned char* data = SOIL_load_image("window.png", &iW, &iH, 0, SOIL_LOAD_RGBA);
     glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, iW, iH, 0, GL_RGBA, GL_UNSIGNED_BYTE, data);
     glGenerateMipmap(GL_TEXTURE_2D);
+
 
     // Vertex buffer objects, vertex array object
     GLuint cubeVBO, cubeVAO;
@@ -242,23 +290,49 @@ int main()
     glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, 5 * sizeof(GLfloat), (GLvoid*)(3 * sizeof(GLfloat)));
     glBindVertexArray(0);
     
-    // bilboard window locations
-    vector<vec3> windows
+    // skybox
+    GLuint skyboxVAO, skyboxVBO;
+    glGenVertexArrays(1, &skyboxVAO);
+    glGenBuffers(1, &skyboxVBO);
+    glBindVertexArray(skyboxVAO);
+
+    glBindBuffer(GL_ARRAY_BUFFER, skyboxVBO);
+    glBufferData(GL_ARRAY_BUFFER, sizeof(skyboxVertices), &skyboxVertices, GL_STATIC_DRAW);
+
+    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 3 * sizeof(GLfloat), (GLvoid*)0);
+    glEnableVertexAttribArray(0);
+
+    // textures for skybox
+    vector<string> skyboxTextures
     {
-        vec3(-1.5f, 0.0f, -0.48f),
-        vec3(1.5f, 0.0f, 0.51f),
-        vec3(0.0f, 0.0f, 0.7f),
-        vec3(-0.3f, 0.0f, -2.3f),
-        vec3(0.5f, 0.0f, -0.6f)
+        "Neon1_right.jpg",
+        "Neon1_left.jpg",
+        "Neon1_top.jpg",
+        "Neon13_bottom.jpg",
+        "Neon1_front.jpg",
+        "Neon1_back.jpg"
     };
+
+    // skybox
+    GLuint cubemapTexture = LoadCubeMap(skyboxTextures);
 
     // cube settings
     cubeShader.Use();
-    //cubeShader.setInt("texture1", 0);
     cubeShader.setInt("diffuse", 0);
     cubeShader.setInt("specular", 1);
 
+    // skybox settings
+    skyboxShader.Use();
+    skyboxShader.setInt("skybox", 0);
 
+    vector<vec3> windows
+    {
+            vec3(-1.5f, 0.0f, -0.48f),
+            vec3(1.5f, 0.0f, 0.51f),
+            vec3(0.0f, 0.0f, 0.7f),
+            vec3(-0.3f, 0.0f, -2.3f),
+            vec3(0.5f, 0.0f, -0.6f)
+    };
 
     // Game loop
     while (!glfwWindowShouldClose(window))
@@ -284,7 +358,7 @@ int main()
         glClearColor(0.1f, 0.1f, 0.1f, 1.0f);
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT | GL_STENCIL_BUFFER_BIT); // paint
 
-        
+        // Color Shader using
         colorShader.Use();
 
         // view/projection transformations
@@ -312,8 +386,6 @@ int main()
         cubeShader.setFloat("light.linear", 0.0002f);
         cubeShader.setFloat("light.quadratic", 0.0002f);
 
-
-        //cubeShader.Use();
         // ----- Effect Obvodka ------
         glStencilMask(0x00);
         // floor
@@ -388,6 +460,23 @@ int main()
         glBindVertexArray(lampVAO);
         glDrawArrays(GL_TRIANGLES, 0, 36);
 
+
+        // draw skybox 
+        glDepthFunc(GL_LEQUAL);  // фрагмент проходит тест, если его значение глубины меньше либо равно хранимому в буфере
+        skyboxShader.Use();
+        view = mat4(mat3(camera.GetViewMatrix())); // remove translation from the view matrix
+        skyboxShader.setMat4("view", view);
+        skyboxShader.setMat4("projection", projection);
+
+        glBindVertexArray(skyboxVAO);
+        glActiveTexture(GL_TEXTURE0);
+        glBindTexture(GL_TEXTURE_CUBE_MAP, cubemapTexture);
+        glDrawArrays(GL_TRIANGLES, 0, 36);
+        glBindVertexArray(0);
+        glDepthFunc(GL_LESS);
+
+
+        // bilboard
         bilboardShader.Use();
         projection = perspective(camera.Zoom, (GLfloat)WIDTH / (GLfloat)HEIGHT, 0.1f, 100.0f);
         view = camera.GetViewMatrix();
@@ -407,7 +496,6 @@ int main()
             bilboardShader.setMat4("model", model);
             glDrawArrays(GL_TRIANGLES, 0, 6);
         }
-
    
         // swap buffers
         glfwSwapBuffers(window);
@@ -487,6 +575,33 @@ GLuint LoadTexture(string name) {
 
     SOIL_free_image_data(data);
     glBindTexture(GL_TEXTURE_2D, 0);
+
+    return texture;
+}
+
+// ----- LoadCubeMap -----
+GLuint LoadCubeMap(vector<string> faces)
+{
+    GLuint texture;
+    glGenTextures(1, &texture);
+    glBindTexture(GL_TEXTURE_CUBE_MAP, texture);
+
+    int width, height;
+    for (unsigned int i = 0; i < faces.size(); i++)
+    {
+        unsigned char* data = SOIL_load_image(faces[i].c_str(), &width, &height, 0, SOIL_LOAD_RGB);
+        if (data)
+        {
+            glTexImage2D(GL_TEXTURE_CUBE_MAP_POSITIVE_X + i, 0, GL_RGB, width, height, 0, GL_RGB, GL_UNSIGNED_BYTE, data);
+            SOIL_free_image_data(data);
+        }
+        
+    }
+    glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+    glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+    glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+    glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+    glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_WRAP_R, GL_CLAMP_TO_EDGE);
 
     return texture;
 }

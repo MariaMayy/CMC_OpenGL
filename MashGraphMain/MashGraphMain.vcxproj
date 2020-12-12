@@ -160,6 +160,12 @@
     <Image Include="art6.jpg" />
     <Image Include="hex.jpg" />
     <Image Include="map_art6_specular.jpg" />
+    <Image Include="Neon13_bottom.jpg" />
+    <Image Include="Neon1_back.jpg" />
+    <Image Include="Neon1_front.jpg" />
+    <Image Include="Neon1_left.jpg" />
+    <Image Include="Neon1_right.jpg" />
+    <Image Include="Neon1_top.jpg" />
     <Image Include="window.png" />
   </ItemGroup>
   <ItemGroup>
