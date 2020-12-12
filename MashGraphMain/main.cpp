@@ -2,6 +2,7 @@
 
 #include <iostream>
 #include <cmath>
+#include <map>
 
 // GLEW 
 #define GLEW_STATIC // use static version of library GLEW
@@ -77,7 +78,10 @@ int main()
     glEnable(GL_STENCIL_TEST);
     glStencilFunc(GL_NOTEQUAL, 1, 0xFF);
     glStencilOp(GL_KEEP, GL_KEEP, GL_REPLACE);
-
+    // blending
+    glEnable(GL_BLEND);
+    glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+   
     // array of vertices
     GLfloat cubeVertices[] = {
         // positions          // normals           // texture coords
@@ -127,14 +131,7 @@ int main()
     // floor
     GLfloat planeVertices[] = {
         // positions          // texture Coords (note we set these higher than 1 (together with GL_REPEAT as texture wrapping mode). this will cause the floor texture to repeat)
-        /* 5.0f, -0.5f,  5.0f, 0.0f,  1.0f,  1.0f,               2.0f, 0.0f,
-        -5.0f, -0.5f,  5.0f,  0.0f,  1.0f,  0.0f,              0.0f, 0.0f,
-        -5.0f, -0.5f, -5.0f,   0.0f, 1.0f, 0.0f,             0.0f, 2.0f,
-
-         5.0f, -0.5f,  5.0f,  0.0f,  1.0f,  0.0f, 2.0f, 0.0f,
-        -5.0f, -0.5f, -5.0f, 0.0f,  1.0f,  0.0f, 0.0f, 2.0f,
-         5.0f, -0.5f, -5.0f,  0.0f,  1.0f,  1.0f, 2.0f, 2.0f
-         */
+        
           5.0f, -0.5f,  5.0f,  0.0f, 1.0f, 0.0f,   1.0f,  0.0f,
         -5.0f, -0.5f,  5.0f,  0.0f, 1.0f, 0.0f,   0.0f,  0.0f,
         -5.0f, -0.5f, -5.0f,  0.0f, 1.0f, 0.0f,   0.0f,  1.0f,
@@ -145,35 +142,23 @@ int main()
 
     };
     
-    /*
-    // positions all cubes
-    vec3 cubePositions[] = {
-        vec3(0.0f,  0.0f,  0.0f),
-        vec3(2.0f,  5.0f, -15.0f),
-        vec3(-1.5f, -2.2f, -2.5f),
-        vec3(-3.8f, -2.0f, -12.3f),
-        vec3(2.4f, -0.4f, -3.5f),
-        vec3(-1.7f,  3.0f, -7.5f),
-        vec3(1.3f, -2.0f, -2.5f),
-        vec3(1.5f,  2.0f, -2.5f),
-        vec3(1.5f,  0.2f, -1.5f),
-        vec3(-1.3f,  1.0f, -1.5f)
+    // bilboard
+    float bilboardVertices[] = {
+        // positions         // texture Coords (swapped y coordinates because texture is flipped upside down)
+        0.0f,  0.5f,  0.0f,  0.0f,  0.0f,
+        0.0f, -0.5f,  0.0f,  0.0f,  1.0f,
+        1.0f, -0.5f,  0.0f,  1.0f,  1.0f,
+
+        0.0f,  0.5f,  0.0f,  0.0f,  0.0f,
+        1.0f, -0.5f,  0.0f,  1.0f,  1.0f,
+        1.0f,  0.5f,  0.0f,  1.0f,  0.0f
     };
-
-    // positions of the point lights
-    vec3 pointLightPositions[] = {
-        vec3(0.7f,  0.2f,  2.0f),
-        vec3(2.3f, -3.3f, -4.0f),
-        vec3(-4.0f,  2.0f, -12.0f),
-        vec3(0.0f,  0.0f, -3.0f)
-    };
-    */
-
-
+ 
     // Compile shader program
     Shader cubeShader("cubeShader.vert","cubeShader.frag");
-    Shader colorShader("cubeShader.vert", "colorShader.frag");
+    Shader colorShader("colorShader.vert", "colorShader.frag");
     Shader lampShader("lampShader.vert","lampShader.frag");
+    Shader bilboardShader("colorShader.vert","bilboardShader.frag");
 
     // Maps for cubes
     GLuint diffuseMap = LoadTexture("art6.jpg");
@@ -183,6 +168,15 @@ int main()
     GLuint diffFloorTexture = LoadTexture("hex.jpg");
     GLint specFloorTexture = LoadTexture("hex.jpg");
 
+    // Bilboard, load image WITH ALPHA channel
+    GLuint bilboardTexture;
+    glGenTextures(1, &bilboardTexture);
+    glBindTexture(GL_TEXTURE_2D, bilboardTexture);
+    int iW = 1500;
+    int iH = 900;
+    unsigned char* data = SOIL_load_image("window.png", &iW, &iH, 0, SOIL_LOAD_RGBA);
+    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, iW, iH, 0, GL_RGBA, GL_UNSIGNED_BYTE, data);
+    glGenerateMipmap(GL_TEXTURE_2D);
 
     // Vertex buffer objects, vertex array object
     GLuint cubeVBO, cubeVAO;
@@ -203,6 +197,7 @@ int main()
     // Texture attribute
     glVertexAttribPointer(2, 2, GL_FLOAT, GL_FALSE, 8 * sizeof(GLfloat), (GLvoid*)(6 * sizeof(GLfloat)));
     glEnableVertexAttribArray(2);
+    glBindVertexArray(0);
 
     // floor
     GLuint planeVBO, planeVAO;
@@ -225,7 +220,6 @@ int main()
     glEnableVertexAttribArray(2);
     glBindVertexArray(0);
 
-
     // lamp
     GLuint lampVAO;
     glGenVertexArrays(1, &lampVAO);
@@ -235,11 +229,35 @@ int main()
     glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 8 * sizeof(GLfloat), (GLvoid*)0);
     glEnableVertexAttribArray(0);
     
+    // bilboard
+    GLuint bilboardVAO, bilboardVBO;
+    glGenVertexArrays(1, &bilboardVAO);
+    glGenBuffers(1, &bilboardVBO);
+    glBindVertexArray(bilboardVAO);
+    glBindBuffer(GL_ARRAY_BUFFER, bilboardVBO);
+    glBufferData(GL_ARRAY_BUFFER, sizeof(bilboardVertices), bilboardVertices, GL_STATIC_DRAW);
+    glEnableVertexAttribArray(0);
+    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 5 * sizeof(GLfloat), (GLvoid*)0);
+    glEnableVertexAttribArray(1);
+    glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, 5 * sizeof(GLfloat), (GLvoid*)(3 * sizeof(GLfloat)));
+    glBindVertexArray(0);
+    
+    // bilboard window locations
+    vector<vec3> windows
+    {
+        vec3(-1.5f, 0.0f, -0.48f),
+        vec3(1.5f, 0.0f, 0.51f),
+        vec3(0.0f, 0.0f, 0.7f),
+        vec3(-0.3f, 0.0f, -2.3f),
+        vec3(0.5f, 0.0f, -0.6f)
+    };
+
     // cube settings
     cubeShader.Use();
     //cubeShader.setInt("texture1", 0);
     cubeShader.setInt("diffuse", 0);
     cubeShader.setInt("specular", 1);
+
 
 
     // Game loop
@@ -254,67 +272,17 @@ int main()
         glfwPollEvents();
         DoMove();
 
+        // sort bilboard before rendering
+        map<float, vec3> sorted;
+        for (unsigned int i = 0; i < windows.size(); i++)
+        {
+            float distance = length(camera.Position - windows[i]);
+            sorted[distance] = windows[i];
+        }
+
         // Set color of background
         glClearColor(0.1f, 0.1f, 0.1f, 1.0f);
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT | GL_STENCIL_BUFFER_BIT); // paint
-
-        /*
-        // cube
-        cubeShader.Use();
-        cubeShader.setVec3("viewPos", camera.Position);
-        cubeShader.setFloat("shininess", 32.0f);
-
-        // directional light
-        cubeShader.setVec3("dirLight.direction", -0.2f, -1.0f, -0.3f);
-        cubeShader.setVec3("dirLight.ambient", 0.1f, 0.1f, 0.1f);
-        cubeShader.setVec3("dirLight.diffuse", 0.8f, 0.8f, 0.8f);
-        cubeShader.setVec3("dirLight.specular", 1.0f, 1.0f, 1.0f);
-        // point light 1
-        cubeShader.setVec3("pointLights[0].position", pointLightPositions[0]);
-        cubeShader.setVec3("pointLights[0].ambient", 0.05f, 0.05f, 0.05f);
-        cubeShader.setVec3("pointLights[0].diffuse", 0.8f, 0.8f, 0.8f);
-        cubeShader.setVec3("pointLights[0].specular", 1.0f, 1.0f, 1.0f);
-        cubeShader.setFloat("pointLights[0].constant", 1.0f);
-        cubeShader.setFloat("pointLights[0].linear", 0.09);
-        cubeShader.setFloat("pointLights[0].quadratic", 0.032);
-        // point light 2
-        cubeShader.setVec3("pointLights[1].position", pointLightPositions[1]);
-        cubeShader.setVec3("pointLights[1].ambient", 0.05f, 0.05f, 0.05f);
-        cubeShader.setVec3("pointLights[1].diffuse", 0.8f, 0.8f, 0.8f);
-        cubeShader.setVec3("pointLights[1].specular", 1.0f, 1.0f, 1.0f);
-        cubeShader.setFloat("pointLights[1].constant", 1.0f);
-        cubeShader.setFloat("pointLights[1].linear", 0.09);
-        cubeShader.setFloat("pointLights[1].quadratic", 0.032);
-        /*
-        // point light 3
-        cubeShader.setVec3("pointLights[2].position", pointLightPositions[2]);
-        cubeShader.setVec3("pointLights[2].ambient", 0.05f, 0.05f, 0.05f);
-        cubeShader.setVec3("pointLights[2].diffuse", 0.8f, 0.8f, 0.8f);
-        cubeShader.setVec3("pointLights[2].specular", 1.0f, 1.0f, 1.0f);
-        cubeShader.setFloat("pointLights[2].constant", 1.0f);
-        cubeShader.setFloat("pointLights[2].linear", 0.09);
-        cubeShader.setFloat("pointLights[2].quadratic", 0.032);
-        // point light 4
-        cubeShader.setVec3("pointLights[3].position", pointLightPositions[3]);
-        cubeShader.setVec3("pointLights[3].ambient", 0.05f, 0.05f, 0.05f);
-        cubeShader.setVec3("pointLights[3].diffuse", 0.8f, 0.8f, 0.8f);
-        cubeShader.setVec3("pointLights[3].specular", 1.0f, 1.0f, 1.0f);
-        cubeShader.setFloat("pointLights[3].constant", 1.0f);
-        cubeShader.setFloat("pointLights[3].linear", 0.09);
-        cubeShader.setFloat("pointLights[3].quadratic", 0.032);
-        
-        // spotLight
-        cubeShader.setVec3("spotLight.position", camera.Position);
-        cubeShader.setVec3("spotLight.direction", camera.Front);
-        cubeShader.setVec3("spotLight.ambient", 0.0f, 0.0f, 0.0f);
-        cubeShader.setVec3("spotLight.diffuse", 1.0f, 1.0f, 1.0f);
-        cubeShader.setVec3("spotLight.specular", 1.0f, 1.0f, 1.0f);
-        cubeShader.setFloat("spotLight.constant", 1.0f);
-        cubeShader.setFloat("spotLight.linear", 0.09);
-        cubeShader.setFloat("spotLight.quadratic", 0.032);
-        cubeShader.setFloat("spotLight.cutOff", cos(radians(12.5f)));
-        cubeShader.setFloat("spotLight.outerCutOff", cos(radians(15.0f)));
-        */
 
         
         colorShader.Use();
@@ -419,8 +387,28 @@ int main()
 
         glBindVertexArray(lampVAO);
         glDrawArrays(GL_TRIANGLES, 0, 36);
-       
 
+        bilboardShader.Use();
+        projection = perspective(camera.Zoom, (GLfloat)WIDTH / (GLfloat)HEIGHT, 0.1f, 100.0f);
+        view = camera.GetViewMatrix();
+        colorShader.setMat4("projection", projection);
+        colorShader.setMat4("view", view);
+        // world transformation
+        model = mat4(1.0f);
+
+        // bilboard
+        glBindVertexArray(bilboardVAO);
+        glActiveTexture(GL_TEXTURE0);
+        glBindTexture(GL_TEXTURE_2D, bilboardTexture);
+        for (map<float, vec3>::reverse_iterator it = sorted.rbegin(); it != sorted.rend(); ++it)
+        {
+            model = mat4(1.0f);
+            model = translate(model, it->second);
+            bilboardShader.setMat4("model", model);
+            glDrawArrays(GL_TRIANGLES, 0, 6);
+        }
+
+   
         // swap buffers
         glfwSwapBuffers(window);
     }

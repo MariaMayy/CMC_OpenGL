@@ -37,6 +37,9 @@
     <Image Include="map_art6_specular.jpg">
       <Filter>Файлы ресурсов</Filter>
     </Image>
+    <Image Include="window.png">
+      <Filter>Файлы ресурсов</Filter>
+    </Image>
   </ItemGroup>
   <ItemGroup>
     <None Include="colorShader.frag">
@@ -55,6 +58,9 @@
       <Filter>Файлы ресурсов</Filter>
     </None>
     <None Include="cubeShader.vert">
+      <Filter>Файлы ресурсов</Filter>
+    </None>
+    <None Include="bilboardShader.frag">
       <Filter>Файлы ресурсов</Filter>
     </None>
   </ItemGroup>

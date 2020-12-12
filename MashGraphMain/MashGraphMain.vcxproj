@@ -160,8 +160,10 @@
     <Image Include="art6.jpg" />
     <Image Include="hex.jpg" />
     <Image Include="map_art6_specular.jpg" />
+    <Image Include="window.png" />
   </ItemGroup>
   <ItemGroup>
+    <None Include="bilboardShader.frag" />
     <None Include="colorShader.frag" />
     <None Include="colorShader.vert" />
     <None Include="cubeShader.frag" />
