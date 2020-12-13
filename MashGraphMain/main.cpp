@@ -18,7 +18,7 @@
 // Headers
 #include "Shader.h"
 #include "Camera.h"
-
+// namespaces
 using namespace std;
 using namespace glm;
 
@@ -27,8 +27,9 @@ void KeyClick(GLFWwindow* window, int iKey, int iScancode, int iAction, int iMod
 void MouseClick(GLFWwindow* window, double dX_pos, double dY_pos); // when use mouse
 void Scrolling(GLFWwindow* window, double xoffset, double yoffset); // when scroll mouse
 void DoMove(); // update camera coordinates when keys pressed
+void DeltaTimeUpdating(); // update delta time
 
-bool keys[1024];
+bool keys[1024]; // bool array for keyboard
 
 // Settigs for window
 const GLuint WIDTH = 1500, HEIGHT = 900;
@@ -39,16 +40,20 @@ GLfloat lastMouse_X = WIDTH / 2.0; // last coordinates of mouse - X
 GLfloat lastMouse_Y = HEIGHT / 2.0; // last coordinates of mouse - Y
 bool bFirstMouse = true; // first press mouse
 
+// functions for loading
 GLuint LoadTexture(string name); // load texture
 GLuint LoadCubeMap(vector<string> faces); // load cube map
 
-void renderQuad();
+void RenderQuadrangle(); // function for rendering quadrangle
+void DrawSkybox(Shader skyboxShader, mat4 view, mat4 projection, GLuint skyboxVAO, GLuint cubemapTexture);
+
+GLfloat heightScale = 0.1;
 
 GLfloat deltaTime = 0.0f;	// time between the last frame and the current frame 
 GLfloat lastFrame = 0.0f; // time of last output frame
 
 vec3 lightPos(1.5f, 1.0f, 0.2f); // position of light source in world space
-
+vec3 lightPosParallax(-3.0f, 1.0f, 10.0f);
 
 int main()
 {
@@ -60,8 +65,8 @@ int main()
     glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
     glfwWindowHint(GLFW_RESIZABLE, GL_FALSE); // disable resizing of the window
 
-    // create window
-    GLFWwindow* window = glfwCreateWindow(WIDTH, HEIGHT, "MASHGRAPH", nullptr, nullptr);
+    // Create window
+    GLFWwindow* window = glfwCreateWindow(WIDTH, HEIGHT, "Pogosbekyan Maria - 305 group", nullptr, nullptr);
     glfwMakeContextCurrent(window);
 
     glfwSetKeyCallback(window, KeyClick); // called when keyboard is moved
@@ -76,16 +81,16 @@ int main()
     
     // Set coordinates relative window: Lower left corner and upper right corner
     glViewport(0, 0, WIDTH, HEIGHT);
-    glEnable(GL_DEPTH_TEST); // 
-    glDepthFunc(GL_LESS); //
+    glEnable(GL_DEPTH_TEST); 
+    glDepthFunc(GL_LESS); 
     glEnable(GL_STENCIL_TEST);
     glStencilFunc(GL_NOTEQUAL, 1, 0xFF);
     glStencilOp(GL_KEEP, GL_KEEP, GL_REPLACE);
-    // blending
+    // Blending
     glEnable(GL_BLEND);
     glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
    
-    // array of vertices
+    // Array of vertices cube
     GLfloat cubeVertices[] = {
         // positions          // normals           // texture coords
           -0.5f, -0.5f, -0.5f,  0.0f,  0.0f, -1.0f,  0.0f,  0.0f,
@@ -131,8 +136,8 @@ int main()
           -0.5f,  0.5f, -0.5f,  0.0f,  1.0f,  0.0f,  0.0f,  1.0f
     };
 
-    // floor
-    GLfloat planeVertices[] = {
+    // Floor
+    GLfloat floorVertices[] = {
         // positions          // texture Coords (note we set these higher than 1 (together with GL_REPEAT as texture wrapping mode). this will cause the floor texture to repeat)
         
           5.0f, -0.5f,  5.0f,  0.0f, 1.0f, 0.0f,   1.0f,  0.0f,
@@ -145,7 +150,7 @@ int main()
 
     };
     
-    // bilboard
+    // Bilboard
     GLfloat bilboardVertices[] = {
         // positions         // texture Coords (swapped y coordinates because texture is flipped upside down)
         0.0f,  0.5f,  0.0f,  0.0f,  0.0f,
@@ -157,7 +162,7 @@ int main()
         1.0f,  0.5f,  0.0f,  1.0f,  0.0f
     };
  
-    // skybox
+    // Skybox
     GLfloat skyboxVertices[] = {
     -1.0f,  1.0f, -1.0f,
         -1.0f, -1.0f, -1.0f,
@@ -209,18 +214,24 @@ int main()
     Shader bilboardShader("colorShader.vert","bilboardShader.frag");
     Shader skyboxShader("skyboxShader.vert", "skyboxShader.frag");
     Shader normalMapShader("NormMap.vert","NormMap.frag");
+    Shader parallaxMapShader("ParallaxMap.vert","ParallaxMap.frag");
 
     // Maps for cubes
     GLuint diffuseMap = LoadTexture("art6.jpg");
     GLuint specularMap = LoadTexture("map_art6_specular.jpg");
 
     // Maps for floor
-    GLuint diffFloorTexture = LoadTexture("hex.jpg");
-    GLint specFloorTexture = LoadTexture("hex.jpg");
+    GLuint diffuseFloorTexture = LoadTexture("hex.jpg");
+    GLint specularFloorTexture = LoadTexture("hex.jpg");
 
     // Normal Maps
     GLuint diffuseNMap = LoadTexture("two.jpg");
     GLuint normalNMap = LoadTexture("NormalMap2.jpg");
+
+    // Parallax Map
+    GLuint diffusePMap = LoadTexture("bricks2.jpg");
+    GLuint normalPMap = LoadTexture("bricks2_normal.jpg");
+    GLuint heightPMap = LoadTexture("bricks2_disp.jpg");
 
     // Bilboard, load image WITH ALPHA channel
     GLuint bilboardTexture;
@@ -228,12 +239,12 @@ int main()
     glBindTexture(GL_TEXTURE_2D, bilboardTexture);
     int iW = 1500;
     int iH = 900;
-    unsigned char* data = SOIL_load_image("window.png", &iW, &iH, 0, SOIL_LOAD_RGBA);
+    unsigned char* data = SOIL_load_image("window4.png", &iW, &iH, 0, SOIL_LOAD_RGBA);
     glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, iW, iH, 0, GL_RGBA, GL_UNSIGNED_BYTE, data);
     glGenerateMipmap(GL_TEXTURE_2D);
 
 
-    // Vertex buffer objects, vertex array object
+    // Vertex buffer objects, vertex array object for cube
     GLuint cubeVBO, cubeVAO;
     glGenVertexArrays(1, &cubeVAO);
     glGenBuffers(1, &cubeVBO); // create VBO
@@ -254,14 +265,14 @@ int main()
     glEnableVertexAttribArray(2);
     glBindVertexArray(0);
 
-    // floor
-    GLuint planeVBO, planeVAO;
-    glGenVertexArrays(1, &planeVAO);
-    glGenBuffers(1, &planeVBO); // create VBO
-    glBindVertexArray(planeVAO);
+    // Floor
+    GLuint floorVBO, floorVAO;
+    glGenVertexArrays(1, &floorVAO);
+    glGenBuffers(1, &floorVBO); // create VBO
+    glBindVertexArray(floorVAO);
 
-    glBindBuffer(GL_ARRAY_BUFFER, planeVBO); // bind 2 buffers (VBO к GL_Array_Buffer)
-    glBufferData(GL_ARRAY_BUFFER, sizeof(planeVertices), &planeVertices, GL_STATIC_DRAW); // copy vertex data to buffer
+    glBindBuffer(GL_ARRAY_BUFFER, floorVBO); // bind 2 buffers (VBO к GL_Array_Buffer)
+    glBufferData(GL_ARRAY_BUFFER, sizeof(floorVertices), &floorVertices, GL_STATIC_DRAW); // copy vertex data to buffer
 
     // Set attributes
     // Pozition attribute
@@ -275,7 +286,7 @@ int main()
     glEnableVertexAttribArray(2);
     glBindVertexArray(0);
 
-    // lamp
+    // Lamp
     GLuint lampVAO;
     glGenVertexArrays(1, &lampVAO);
     glBindVertexArray(lampVAO);
@@ -284,7 +295,7 @@ int main()
     glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 8 * sizeof(GLfloat), (GLvoid*)0);
     glEnableVertexAttribArray(0);
     
-    // bilboard
+    // Bilboard
     GLuint bilboardVAO, bilboardVBO;
     glGenVertexArrays(1, &bilboardVAO);
     glGenBuffers(1, &bilboardVBO);
@@ -297,7 +308,7 @@ int main()
     glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, 5 * sizeof(GLfloat), (GLvoid*)(3 * sizeof(GLfloat)));
     glBindVertexArray(0);
     
-    // skybox
+    // Skybox
     GLuint skyboxVAO, skyboxVBO;
     glGenVertexArrays(1, &skyboxVAO);
     glGenBuffers(1, &skyboxVBO);
@@ -309,7 +320,7 @@ int main()
     glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 3 * sizeof(GLfloat), (GLvoid*)0);
     glEnableVertexAttribArray(0);
 
-    // textures for skybox
+    // Textures for skybox
     vector<string> skyboxTextures
     {
         "Neon1_right.jpg",
@@ -320,47 +331,52 @@ int main()
         "Neon1_back.jpg"
     };
 
-    // skybox
+    // Skybox loading cube map
     GLuint cubemapTexture = LoadCubeMap(skyboxTextures);
 
-    // cube settings
+    // Cube settings, binding textures
     cubeShader.Use();
     cubeShader.setInt("diffuse", 0);
     cubeShader.setInt("specular", 1);
     
-    // normal map
+    // Normal map, binding textures
     normalMapShader.Use();
-    normalMapShader.setInt("diffuseMap", 0);
-    normalMapShader.setInt("normalMap", 1);
+    normalMapShader.setInt("diffuseMap", 3);
+    normalMapShader.setInt("normalMap", 4);
 
-    // skybox settings
+    // Parallax relief map, binding textures
+    parallaxMapShader.Use();
+    parallaxMapShader.setInt("diffusePMap", 0);
+    parallaxMapShader.setInt("normalPMap", 1);
+    parallaxMapShader.setInt("depthPMap", 2);
+
+    // Skybox settings, binding textures
     skyboxShader.Use();
     skyboxShader.setInt("skybox", 0);
 
+    // Location of billboards in space
     vector<vec3> windows
     {
-            vec3(-1.5f, 0.0f, -0.48f),
+            vec3(-2.5f, 1.0f, -0.48f),
             vec3(1.5f, 0.0f, 0.51f),
-            vec3(0.0f, 0.0f, 0.7f),
+            vec3(-3.5f, 0.0f, -0.48f),
             vec3(-0.3f, 0.0f, -2.3f),
-            vec3(0.5f, 0.0f, -0.6f)
+            vec3(-3.0f, 0.5f, -2.0f)
     };
 
     // Game loop
     while (!glfwWindowShouldClose(window))
     {
         // Calculate  new value of deltaTime - time between the last frame and the current frame 
-        GLfloat currentFrame = glfwGetTime();
-        deltaTime = currentFrame - lastFrame;
-        lastFrame = currentFrame;
-
+        DeltaTimeUpdating();
+        
         // Check keybord input/mouse movement
         glfwPollEvents();
         DoMove();
 
-        // sort bilboard before rendering
-        map<float, vec3> sorted;
-        for (unsigned int i = 0; i < windows.size(); i++)
+        // Sort bilboard before rendering
+        map <float, vec3> sorted;
+        for (GLuint i = 0; i < windows.size(); i++)
         {
             float distance = length(camera.Position - windows[i]);
             sorted[distance] = windows[i];
@@ -370,38 +386,69 @@ int main()
         glClearColor(0.1f, 0.1f, 0.1f, 1.0f);
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT | GL_STENCIL_BUFFER_BIT); // paint
 
-        // normal map
+        
+        // Normal map
         mat4 projection = perspective(camera.Zoom, (GLfloat)WIDTH / (GLfloat)HEIGHT, 0.1f, 100.0f);
         mat4 view = camera.GetViewMatrix();
         normalMapShader.Use();
         normalMapShader.setMat4("projection", projection);
         normalMapShader.setMat4("view", view);
-        // render normal-mapped quad
+        // Render normal-mapped quad
         mat4 model = mat4(1.0f);
         model = translate(model, vec3(2.0f, 2.0f, 1.0f));
         model = rotate(model, (GLfloat)glfwGetTime() * -10.0f, normalize(vec3(1.0, 0.0, 1.0))); // rotate the quad to show normal mapping from multiple directions
         normalMapShader.setMat4("model", model);
         normalMapShader.setVec3("viewPos", camera.Position);
         normalMapShader.setVec3("lightPos", lightPos);
-        glActiveTexture(GL_TEXTURE0);
+        glActiveTexture(GL_TEXTURE3);
         glBindTexture(GL_TEXTURE_2D, diffuseNMap);
-        glActiveTexture(GL_TEXTURE1);
+        glActiveTexture(GL_TEXTURE4);
         glBindTexture(GL_TEXTURE_2D, normalNMap);
-        renderQuad();
+        RenderQuadrangle();
 
-        // render light source (simply re-renders a smaller plane at the light's position for debugging/visualization)
+        // Render light source 
         model = mat4(1.0f);
         model = translate(model, lightPos);
         model = scale(model, vec3(0.1f));
         normalMapShader.setMat4("model", model);
-        renderQuad();
+        RenderQuadrangle();
+        
+        
+        // Parallax mapping
+         projection = perspective(camera.Zoom, (GLfloat)WIDTH / (GLfloat)HEIGHT, 0.1f, 100.0f);
+         view = mat4(1.0f);
+        view = camera.GetViewMatrix();
+        parallaxMapShader.Use();
+        parallaxMapShader.setMat4("projection", projection);
+        parallaxMapShader.setMat4("view", view);
 
+        model = mat4(1.0f);
+        model = translate(model, vec3(10.0f, 1.5f, 0.0f));
+        model = rotate(model, radians((GLfloat)glfwGetTime() * -10.0f), normalize(vec3(1.0, 0.0, 1.0))); // rotate the quad to show parallax mapping from multiple directions
+        parallaxMapShader.setMat4("model", model);
+        parallaxMapShader.setVec3("viewPos", camera.Position);
+        parallaxMapShader.setVec3("lightPos", lightPosParallax);
+        parallaxMapShader.setFloat("heightScale", heightScale);
+        glActiveTexture(GL_TEXTURE0);
+        glBindTexture(GL_TEXTURE_2D, diffusePMap);
+        glActiveTexture(GL_TEXTURE1);
+        glBindTexture(GL_TEXTURE_2D, normalPMap);
+        glActiveTexture(GL_TEXTURE2);
+        glBindTexture(GL_TEXTURE_2D, heightPMap);
+        RenderQuadrangle();
 
+        // Model for parallax light
+        parallaxMapShader.Use();
+        model = mat4(1.0f);
+        model = translate(model, lightPosParallax);
+        model = scale(model, vec3(0.1f));
+        parallaxMapShader.setMat4("model", model);
+        
 
         // Color Shader using
         colorShader.Use();
 
-        // view/projection transformations
+        // View/projection transformations
         // Calculate and send to shader matrix of perspective proection with field of view angle
         projection = perspective(camera.Zoom, (GLfloat)WIDTH / (GLfloat)HEIGHT, 0.1f, 100.0f);
         view = camera.GetViewMatrix();
@@ -410,12 +457,12 @@ int main()
         // world transformation
         model = mat4(1.0f);
         
-        // cube
+        // Cube
         cubeShader.Use();
         cubeShader.setMat4("projection", projection);
         cubeShader.setMat4("view", view);
 
-        // settings for model Fong
+        // Settings for model Fong
         cubeShader.setVec3("light.position", lightPos);
         cubeShader.setVec3("viewPos", camera.Position);
         cubeShader.setFloat("material.shininess", 32.0f);
@@ -428,26 +475,25 @@ int main()
 
         // ----- Effect Obvodka ------
         glStencilMask(0x00);
-        // floor
-        glBindVertexArray(planeVAO);
+        // Floor
+        glBindVertexArray(floorVAO);
         glActiveTexture(GL_TEXTURE0);
-        glBindTexture(GL_TEXTURE_2D, diffFloorTexture);
+        glBindTexture(GL_TEXTURE_2D, diffuseFloorTexture);
         glActiveTexture(GL_TEXTURE1);
-        glBindTexture(GL_TEXTURE_2D, specFloorTexture);
+        glBindTexture(GL_TEXTURE_2D, specularFloorTexture);
         cubeShader.setMat4("model", mat4(1.0f));
         glDrawArrays(GL_TRIANGLES, 0, 6);
         glBindVertexArray(0);
         
-        // First render pass, draw objects as normal, writing to the stencil buffer
-        // --------------------------------------------------------------------
+        // First render 
         glStencilFunc(GL_ALWAYS, 1, 0xFF); // each fragment will update the stencil buffer
         glStencilMask(0xFF); // enable writing to the stencil buffer
 
-        // cubes
-        // textures activation and binding
+        // Cubes
+        // Textures activation and binding
         glBindVertexArray(cubeVAO);
         glActiveTexture(GL_TEXTURE0);
-        glBindTexture(GL_TEXTURE_2D, diffuseMap); // cubeTexture
+        glBindTexture(GL_TEXTURE_2D, diffuseMap);
         glActiveTexture(GL_TEXTURE1);
         glBindTexture(GL_TEXTURE_2D, specularMap);
         
@@ -459,18 +505,14 @@ int main()
         cubeShader.setMat4("model", model);
         glDrawArrays(GL_TRIANGLES, 0, 36);
 
-
-        // Second render pass: now draw slightly scaled versions of the objects, this time disabling stencil writing.
-        // Because the stencil buffer is now filled with several 1s. The parts of the buffer that are 1 are not drawn, thus only drawing 
-        // the objects' size differences, making it look like borders.
-        // -----------------------------------------------------------------------------------------------------------------------------
+        // Second render
         glStencilFunc(GL_NOTEQUAL, 1, 0xFF);
         glStencilMask(0x00); // each bit becomes zero in the stencil buffer (stop recording)
         glDisable(GL_DEPTH_TEST);
         colorShader.Use();
         GLfloat scale = 1.1;
         
-        // cubes
+        // Cubes
         model = mat4(1.0f);
         model = translate(model, vec3(-1.0f, 0.0f, -1.0f));
         model = glm::scale(model, vec3(scale, scale, scale));
@@ -488,7 +530,7 @@ int main()
         // ------ Effect Obvodka ------
 
     
-        // also draw the lamp object
+        // Draw lamp
         lampShader.Use();
         lampShader.setMat4("projection", projection);
         lampShader.setMat4("view", view);
@@ -501,35 +543,24 @@ int main()
         glDrawArrays(GL_TRIANGLES, 0, 36);
 
 
-        // draw skybox 
-        glDepthFunc(GL_LEQUAL);  // фрагмент проходит тест, если его значение глубины меньше либо равно хранимому в буфере
-        skyboxShader.Use();
-        view = mat4(mat3(camera.GetViewMatrix())); // remove translation from the view matrix
-        skyboxShader.setMat4("view", view);
-        skyboxShader.setMat4("projection", projection);
-
-        glBindVertexArray(skyboxVAO);
-        glActiveTexture(GL_TEXTURE0);
-        glBindTexture(GL_TEXTURE_CUBE_MAP, cubemapTexture);
-        glDrawArrays(GL_TRIANGLES, 0, 36);
-        glBindVertexArray(0);
-        glDepthFunc(GL_LESS);
+        // Draw skybox 
+        DrawSkybox(skyboxShader, view, projection, skyboxVAO, cubemapTexture);
 
 
-        // bilboard
+        // Bilboard
         bilboardShader.Use();
         projection = perspective(camera.Zoom, (GLfloat)WIDTH / (GLfloat)HEIGHT, 0.1f, 100.0f);
         view = camera.GetViewMatrix();
         colorShader.setMat4("projection", projection);
         colorShader.setMat4("view", view);
-        // world transformation
+        // World transformation
         model = mat4(1.0f);
 
-        // bilboard
+        // Bilboard
         glBindVertexArray(bilboardVAO);
         glActiveTexture(GL_TEXTURE0);
         glBindTexture(GL_TEXTURE_2D, bilboardTexture);
-        for (map<float, vec3>::reverse_iterator it = sorted.rbegin(); it != sorted.rend(); ++it)
+        for (map <float, vec3>::reverse_iterator it = sorted.rbegin(); it != sorted.rend(); ++it)
         {
             model = mat4(1.0f);
             model = translate(model, it->second);
@@ -537,7 +568,7 @@ int main()
             glDrawArrays(GL_TRIANGLES, 0, 6);
         }
    
-        // swap buffers
+        // Swap buffers
         glfwSwapBuffers(window);
     }
     glfwTerminate();
@@ -601,6 +632,13 @@ void DoMove()
     if (keys[GLFW_KEY_D]) camera.ProcessKeyboard(RIGHT, deltaTime);
 }
 
+void DeltaTimeUpdating()
+{
+    GLfloat currentFrame = glfwGetTime();
+    deltaTime = currentFrame - lastFrame;
+    lastFrame = currentFrame;
+}
+
 // ----- LoadTexture -----
 GLuint LoadTexture(string name) {
     GLuint texture;
@@ -646,12 +684,29 @@ GLuint LoadCubeMap(vector<string> faces)
     return texture;
 }
 
+void DrawSkybox(Shader skyboxShader, mat4 view, mat4 projection, GLuint skyboxVAO, GLuint cubemapTexture)
+{
+    glDepthFunc(GL_LEQUAL);  // fragment passes test if its depth value is less than or equal to the one stored in the buffer
+    skyboxShader.Use();
+    view = mat4(mat3(camera.GetViewMatrix())); // remove translation from the view matrix
+    skyboxShader.setMat4("view", view);
+    skyboxShader.setMat4("projection", projection);
+
+    glBindVertexArray(skyboxVAO);
+    glActiveTexture(GL_TEXTURE0);
+    glBindTexture(GL_TEXTURE_CUBE_MAP, cubemapTexture);
+    glDrawArrays(GL_TRIANGLES, 0, 36);
+    glBindVertexArray(0);
+    glDepthFunc(GL_LESS);
+}
+
+
 // for normal map
 // renders a 1x1 quad in NDC with manually calculated tangent vectors
 // ------------------------------------------------------------------
 unsigned int quadVAO = 0;
 unsigned int quadVBO;
-void renderQuad()
+void RenderQuadrangle()
 {
     if (quadVAO == 0)
     {
@@ -738,3 +793,6 @@ void renderQuad()
     glDrawArrays(GL_TRIANGLES, 0, 6);
     glBindVertexArray(0);
 }
+
+
+

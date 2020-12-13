@@ -37,9 +37,6 @@
     <Image Include="map_art6_specular.jpg">
       <Filter>Файлы ресурсов</Filter>
     </Image>
-    <Image Include="window.png">
-      <Filter>Файлы ресурсов</Filter>
-    </Image>
     <Image Include="Neon1_back.jpg">
       <Filter>Файлы ресурсов</Filter>
     </Image>
@@ -56,6 +53,24 @@
       <Filter>Файлы ресурсов</Filter>
     </Image>
     <Image Include="Neon13_bottom.jpg">
+      <Filter>Файлы ресурсов</Filter>
+    </Image>
+    <Image Include="NormalMap2.jpg">
+      <Filter>Файлы ресурсов</Filter>
+    </Image>
+    <Image Include="two.jpg">
+      <Filter>Файлы ресурсов</Filter>
+    </Image>
+    <Image Include="window4.png">
+      <Filter>Файлы ресурсов</Filter>
+    </Image>
+    <Image Include="bricks2.jpg">
+      <Filter>Файлы ресурсов</Filter>
+    </Image>
+    <Image Include="bricks2_disp.jpg">
+      <Filter>Файлы ресурсов</Filter>
+    </Image>
+    <Image Include="bricks2_normal.jpg">
       <Filter>Файлы ресурсов</Filter>
     </Image>
   </ItemGroup>
@@ -79,6 +94,24 @@
       <Filter>Файлы ресурсов</Filter>
     </None>
     <None Include="bilboardShader.frag">
+      <Filter>Файлы ресурсов</Filter>
+    </None>
+    <None Include="NormMap.frag">
+      <Filter>Файлы ресурсов</Filter>
+    </None>
+    <None Include="NormMap.vert">
+      <Filter>Файлы ресурсов</Filter>
+    </None>
+    <None Include="ParallaxMap.frag">
+      <Filter>Файлы ресурсов</Filter>
+    </None>
+    <None Include="ParallaxMap.vert">
+      <Filter>Файлы ресурсов</Filter>
+    </None>
+    <None Include="skyboxShader.frag">
+      <Filter>Файлы ресурсов</Filter>
+    </None>
+    <None Include="skyboxShader.vert">
       <Filter>Файлы ресурсов</Filter>
     </None>
   </ItemGroup>
