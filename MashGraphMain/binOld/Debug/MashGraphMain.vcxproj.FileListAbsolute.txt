@@ -1,2 +1,0 @@
-D:\Study\MashGraph\MashGraphMain\MashGraphMain\Debug\MashGraphMain.exe
-D:\Study\MashGraph\MashGraphMain\MashGraphMain\Debug\MashGraphMain.pdb
